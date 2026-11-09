@@ -8,7 +8,7 @@ RUN npm ci --only=production
 COPY tsconfig.json ./
 COPY src ./src
 
-RUN npm install -g typescript && tsc
+RUN npx tsc
 
 EXPOSE 3000
 

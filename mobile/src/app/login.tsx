@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -75,6 +76,16 @@ export default function LoginScreen() {
         <Button label="Entrar" icon="log-in-outline" onPress={submit} loading={loading} />
       </View>
 
+      <View style={styles.signup}>
+        <Text style={styles.signupText}>Ainda não tem conta?</Text>
+        <Button
+          label="Criar conta"
+          icon="person-add-outline"
+          variant="secondary"
+          onPress={() => router.push('/register')}
+        />
+      </View>
+
       <Text style={styles.server}>Servidor: {API_URL}</Text>
     </FormScreen>
   );
@@ -123,6 +134,14 @@ const styles = StyleSheet.create({
   cardText: {
     marginTop: -Spacing.sm,
     fontSize: 14,
+    color: Colors.muted,
+  },
+  signup: {
+    gap: Spacing.sm,
+    alignItems: 'center',
+  },
+  signupText: {
+    fontSize: 15,
     color: Colors.muted,
   },
   server: {

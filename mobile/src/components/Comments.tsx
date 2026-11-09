@@ -171,13 +171,16 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     color: Colors.ink,
   },
+  // Campo e botão lado a lado: com o teclado aberto os dois ficam visíveis.
   form: {
-    gap: Spacing.sm,
+    flexDirection: 'row',
     alignItems: 'flex-end',
+    gap: Spacing.sm,
   },
   input: {
-    alignSelf: 'stretch',
-    minHeight: 80,
+    flex: 1,
+    minHeight: 48,
+    maxHeight: 140,
     padding: Spacing.md,
     borderRadius: Radius.md,
     borderWidth: 1,

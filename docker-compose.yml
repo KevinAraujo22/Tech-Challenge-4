@@ -12,6 +12,7 @@ services:
       - DEFAULT_TEACHER_EMAIL=professor@escola.com
       - DEFAULT_TEACHER_PASSWORD=professor123
       - SEED_DEMO_DATA=true
+      - TEACHER_SIGNUP_CODE=professor2026
     depends_on:
       - mongo
 

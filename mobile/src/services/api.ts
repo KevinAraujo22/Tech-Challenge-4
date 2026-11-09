@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-import type { Comment, Page, PeopleKind, Person, PersonInput, Post, PostInput, User } from '@/types';
+import type { Comment, Page, PeopleKind, Person, PersonInput, Post, PostInput, SignUpInput, User } from '@/types';
 
 const API_PORT = 3001;
 
@@ -60,7 +60,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!response.ok) {
     // Token expirado ou inválido: encerra a sessão para o usuário logar de novo.
-    if (response.status === 401 && !path.startsWith('/auth/login')) onUnauthorized?.();
+    if (response.status === 401 && !path.startsWith('/auth/login') && !path.startsWith('/auth/register'))
+      onUnauthorized?.();
     const body = await response.json().catch(() => null);
     throw new ApiError(body?.message || 'Não foi possível concluir a solicitação.', response.status);
   }
@@ -76,6 +77,7 @@ const json = (method: string, body?: unknown): RequestInit => ({
 export const authApi = {
   login: (email: string, password: string) =>
     request<{ token: string; user: User }>('/auth/login', json('POST', { email, password })),
+  register: (input: SignUpInput) => request<{ token: string; user: User }>('/auth/register', json('POST', input)),
   me: () => request<{ user: User }>('/auth/me'),
 };
 

@@ -1,18 +1,23 @@
-import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
+import { type ReactNode, use } from 'react';
+import { KeyboardAvoidingView, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { HeaderHeightContext } from 'expo-router/react-navigation';
 
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 
-// Container das telas de formulário: rola, respeita o teclado e a área segura.
+// Container das telas de formulário: rola, respeita a área segura e sobe o
+// conteúdo quando o teclado abre. Com o Android em modo edge-to-edge a janela
+// não encolhe sozinha, por isso o "padding" vale para as duas plataformas.
 export function FormScreen({ children }: { children: ReactNode }) {
+  const headerHeight = use(HeaderHeightContext) ?? 0;
+
   return (
-    <SafeAreaView edges={['bottom']} style={styles.safe}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 96 : 0}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    // Sem cabeçalho (login), o topo também precisa respeitar a barra de status.
+    <SafeAreaView edges={headerHeight ? ['bottom'] : ['top', 'bottom']} style={styles.safe}>
+      <KeyboardAvoidingView style={styles.flex} behavior="padding" keyboardVerticalOffset={headerHeight}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled">
           {children}
         </ScrollView>
       </KeyboardAvoidingView>

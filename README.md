@@ -34,8 +34,9 @@ e não havia como diferenciar quem pode criar conteúdo de quem só pode ler. A 
 2. **Perfis e permissões reais**: professores criam e alteram; alunos apenas visualizam e comentam.
    A regra é validada no app **e** na API.
 
-Diferente da Fase 3, no app todo usuário entra com login: professores e alunos são cadastrados
-pelos próprios professores.
+Diferente da Fase 3, no app todo usuário entra com login. Alunos podem criar a própria conta pela
+tela inicial; professores também, desde que informem o código de acesso da escola. Professores
+ainda podem cadastrar outros professores e alunos pelas páginas administrativas.
 
 ---
 
@@ -50,6 +51,7 @@ Tech Challenge 4/
 │   │   ├── app/                     # Rotas do Expo Router (cada arquivo é uma tela)
 │   │   │   ├── _layout.tsx          # AuthProvider + Stack com rotas protegidas
 │   │   │   ├── login.tsx            # Login único (professor e aluno)
+│   │   │   ├── register.tsx         # Criar conta (aluno livre; professor com código)
 │   │   │   ├── (tabs)/              # Abas exibidas após o login
 │   │   │   │   ├── _layout.tsx      # Abas Admin/Professores/Alunos só para professores
 │   │   │   │   ├── index.tsx        # Página principal: lista + busca de posts
@@ -148,6 +150,7 @@ Tela do app (React Native / Expo Router)
 | Página (requisito)                     | Rota                   | Acesso    | Endpoints consumidos                          |
 |----------------------------------------|------------------------|-----------|-----------------------------------------------|
 | Login (10)                             | `/login`               | Público   | `POST /auth/login`, `GET /auth/me`            |
+| Criar conta                            | `/register`            | Público   | `POST /auth/register`                         |
 | Lista de posts + busca (1)             | `/` (aba Posts)        | Logado    | `GET /posts`, `GET /posts/search?q=`          |
 | Leitura de post + comentários (2)      | `/posts/:id`           | Logado    | `GET /posts/:id`, `GET/POST/DELETE /posts/:id/comments` |
 | Criação de postagem (3)                | `/posts/new`           | Professor | `POST /posts`                                 |
@@ -163,6 +166,7 @@ Tela do app (React Native / Expo Router)
 
 | Método   | Rota                               | Autenticação        | Descrição                                          |
 |----------|------------------------------------|---------------------|----------------------------------------------------|
+| `POST`   | `/auth/register`                   | —                   | Cria conta de aluno (ou de professor com `accessCode`) e já devolve `{ token, user }` |
 | `POST`   | `/auth/login`                      | —                   | Login de professor ou aluno, devolve `{ token, user }` |
 | `GET`    | `/auth/me`                         | Bearer JWT          | Retorna o usuário autenticado                      |
 | `GET`    | `/posts`                           | —                   | Lista os posts, do mais recente ao mais antigo     |
@@ -189,9 +193,15 @@ Tela do app (React Native / Expo Router)
   alunos. Senha conferida com **bcrypt**; e-mail ou senha errados retornam `401`. Em caso de
   sucesso é emitido um **JWT** (7 dias) contendo `id`, `name`, `email` e `role` (`teacher` ou
   `student`).
-- **Cadastro:** não existe mais cadastro público. Professores cadastram professores e alunos pelo
-  app (`POST /teachers`, `POST /students`). Senhas com no mínimo 6 caracteres, gravadas apenas
-  como hash. O e-mail é único entre professores **e** alunos (`409` se repetido).
+- **Cadastro pela tela de login (`POST /auth/register`):** qualquer pessoa cria uma conta de
+  **aluno**. Para criar conta de **professor** é preciso informar o código de acesso da escola,
+  definido na variável `TEACHER_SIGNUP_CODE` da API (`403` se o código estiver errado; sem a
+  variável, o cadastro de professores pela tela fica desativado). Assim um aluno não consegue se
+  "promover" a professor. Após o cadastro o usuário já entra logado.
+- **Cadastro pelos professores:** professores cadastram professores e alunos nas páginas
+  administrativas (`POST /teachers`, `POST /students`).
+- **Regras comuns:** senhas com no mínimo 6 caracteres, gravadas apenas como hash; o e-mail é
+  único entre professores **e** alunos (`409` se repetido).
 - **Primeiro acesso:** se o banco não tiver nenhum professor, a API cria um professor padrão ao
   subir (`DEFAULT_TEACHER_EMAIL` / `DEFAULT_TEACHER_PASSWORD`).
 - **App:** o `AuthContext` guarda token e usuário no **SecureStore** (armazenamento seguro do
@@ -296,6 +306,25 @@ O Docker Compose já cria os usuários de demonstração:
 | Professor | `professor@escola.com` | `professor123` |
 | Aluno     | `aluno@escola.com`     | `aluno123`     |
 
+Também é possível criar uma conta nova em **Criar conta**, na tela de login. Para o perfil
+professor, o código de acesso configurado no `docker-compose.yml` é `professor2026`
+(variável `TEACHER_SIGNUP_CODE`). Troque essas senhas e o código antes de publicar a API.
+
+### Gerando o APK (Android)
+
+O `mobile/eas.json` tem o perfil `preview`, que gera um APK instalável pelo EAS Build (nuvem da
+Expo, conta gratuita):
+
+```bash
+cd mobile
+npx eas-cli@latest login
+npx eas-cli@latest build -p android --profile preview
+```
+
+O endereço da API fica gravado no APK pela variável `EXPO_PUBLIC_API_URL` do perfil (ajuste para
+o IP do computador que roda a API ou para uma API hospedada). O app libera HTTP sem TLS
+(`usesCleartextTraffic`) para funcionar com a API local; em produção use HTTPS.
+
 ### Guia de Uso
 
 **Professor**
@@ -313,7 +342,8 @@ O Docker Compose já cria os usuários de demonstração:
 
 **Aluno**
 
-1. Entre com o e-mail e a senha cadastrados por um professor.
+1. Entre com o e-mail e a senha cadastrados por um professor, ou crie a sua conta em
+   **Criar conta** escolhendo o perfil **Aluno**.
 2. Aparecem apenas as abas **Posts** e **Conta**: o aluno lê, busca e comenta posts e pode apagar
    os próprios comentários.
 
@@ -338,12 +368,15 @@ cd backend
 npm test          # Jest + Supertest (requer MongoDB em localhost:27017)
 ```
 
-Cenários cobertos no backend (44 testes):
+Cenários cobertos no backend (49 testes):
 
 | Cenário                                                      | Resultado esperado |
 |-------------------------------------------------------------|--------------------|
 | Login de professor / aluno com credenciais do banco          | 200 + token + role |
 | Login com e-mail inexistente ou senha errada                 | 401                |
+| Criar conta de aluno pela tela                               | 201 + token        |
+| Criar conta de professor sem código / com código errado      | 403                |
+| Criar conta de professor com o código da escola              | 201 + token        |
 | Criar/editar/excluir post como professor                     | 201 / 200 / 204    |
 | Criar/editar/excluir post **sem token**                      | 401                |
 | Criar/editar/excluir post **como aluno**                     | 403                |
@@ -365,9 +398,11 @@ Cenários cobertos no backend (44 testes):
 - **Back-end sem alunos nem perfis:** a API da Fase 3 só conhecia professores e liberava o
   cadastro público. Criamos o modelo `Student`, colocamos o `role` dentro do JWT e separamos dois
   middlewares: `requireAuth` (401, não logado) e `requireTeacher` (403, logado sem permissão).
-- **Primeiro acesso sem cadastro público:** ao remover o `/auth/register`, ninguém conseguiria
-  entrar com o banco vazio. A solução foi criar um professor padrão na subida do servidor
-  (configurável por variáveis de ambiente) e o script `npm run seed` para dados de demonstração.
+- **Cadastro público sem abrir brecha de permissão:** na Fase 3 qualquer pessoa podia se
+  cadastrar como professor. Agora o cadastro pela tela cria alunos livremente e só cria
+  professores com o código de acesso da escola (`TEACHER_SIGNUP_CODE`). Para o banco vazio, a API
+  cria um professor padrão na subida (configurável por variáveis de ambiente), e o script
+  `npm run seed` gera dados de demonstração.
 - **E-mail único em duas coleções:** professores e alunos ficam em coleções diferentes, mas o
   e-mail é o login dos dois. O índice `unique` do MongoDB não cobre isso, então a função
   `emailInUse` consulta as duas coleções antes de criar ou editar.
@@ -384,6 +419,15 @@ Cenários cobertos no backend (44 testes):
   projeto vem com React Compiler e as novas regras de lint de hooks não aceitam `setState` direto
   dentro de `useEffect`. Criamos o hook `useResource`, que só atualiza o estado quando a requisição
   responde e ignora respostas que chegam depois que o usuário saiu da tela.
+- **Teclado cobrindo os campos no Android:** a partir do Android 15 os apps rodam em modo
+  edge-to-edge e a janela não encolhe mais quando o teclado abre, então o campo em que se digitava
+  ficava escondido. A solução foi usar `KeyboardAvoidingView` com `behavior="padding"` nas duas
+  plataformas, descontando a altura do cabeçalho (`HeaderHeightContext`), e colocar o botão
+  "Enviar" ao lado do campo de comentário para os dois ficarem visíveis juntos. A biblioteca
+  `react-native-keyboard-controller` foi descartada porque não roda no Expo Go.
+- **Gerar o APK no Windows:** a compilação C++ do React Native gera caminhos com mais de 260
+  caracteres, que o Windows recusa. O APK foi compilado dentro de um container Linux (Docker) e o
+  projeto ganhou o perfil `preview` do EAS Build como alternativa na nuvem.
 - **Testes interferindo entre si:** com mais suítes usando o mesmo banco, o Jest rodando arquivos
   em paralelo fazia um teste apagar os dados de outro; passamos a usar `--runInBand`.
 

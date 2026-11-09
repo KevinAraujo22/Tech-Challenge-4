@@ -12,6 +12,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "br.com.blogdaescola",
       "adaptiveIcon": {
         "backgroundColor": "#31544d",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -34,11 +35,29 @@
           "imageWidth": 76
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "c7e447ce-6ca4-4adb-a11f-f05e656681c6"
+      }
     }
   }
 }

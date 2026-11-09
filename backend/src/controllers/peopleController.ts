@@ -13,7 +13,7 @@ const isValidId = (id: string | string[]) => mongoose.Types.ObjectId.isValid(id 
 const escapeRegex = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // O e-mail é o login, então precisa ser único entre professores E alunos.
-async function emailInUse(email: string, exceptId?: string) {
+export async function emailInUse(email: string, exceptId?: string) {
   const filter = exceptId ? { email, _id: { $ne: exceptId } } : { email };
   const [professor, student] = await Promise.all([
     Professor.exists(filter),

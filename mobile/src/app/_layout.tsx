@@ -42,6 +42,7 @@ function RootNavigator() {
       }}>
       <Stack.Protected guard={!user}>
         <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="register" options={{ title: 'Criar conta' }} />
       </Stack.Protected>
 
       <Stack.Protected guard={!!user}>

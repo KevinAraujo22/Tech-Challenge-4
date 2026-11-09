@@ -54,3 +54,11 @@ export type Page<T> = {
 };
 
 export type PeopleKind = 'teachers' | 'students';
+
+export type SignUpInput = {
+  name: string;
+  email: string;
+  password: string;
+  role: Role;
+  accessCode?: string; // código da escola, exigido para professores
+};

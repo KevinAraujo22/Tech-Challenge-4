@@ -1,6 +1,7 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useCallback } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { HeaderHeightContext } from 'expo-router/react-navigation';
+import { use, useCallback } from 'react';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { Comments } from '@/components/Comments';
@@ -16,6 +17,7 @@ export default function PostScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { isTeacher } = useAuth();
   const { data: post, error, reload } = useResource(useCallback(() => postsApi.get(id), [id]));
+  const headerHeight = use(HeaderHeightContext) ?? 0;
 
   if (error) return <ErrorState message={error} onRetry={reload} />;
   if (!post) return <Loading label="Abrindo post…" />;
@@ -25,8 +27,8 @@ export default function PostScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 96 : 0}>
+      behavior="padding"
+      keyboardVerticalOffset={headerHeight}>
       <Stack.Screen options={{ title: post.title }} />
       <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>{post.title}</Text>

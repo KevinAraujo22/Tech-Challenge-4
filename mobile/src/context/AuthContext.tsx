@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 
 import { ApiError, authApi, setAuthToken, setUnauthorizedHandler } from '@/services/api';
 import { storage } from '@/services/storage';
-import type { User } from '@/types';
+import type { SignUpInput, User } from '@/types';
 
 const TOKEN_KEY = 'blog-escola-token';
 const USER_KEY = 'blog-escola-user';
@@ -12,6 +12,7 @@ type AuthContextValue = {
   isLoading: boolean; // true enquanto a sessão salva é restaurada
   isTeacher: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signUp: (input: SignUpInput) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -50,16 +51,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => setUnauthorizedHandler(null);
   }, []);
 
-  const signIn = async (email: string, password: string) => {
-    const { token, user: loggedUser } = await authApi.login(email.trim(), password);
+  const startSession = async (token: string, loggedUser: User) => {
     setAuthToken(token);
     await Promise.all([storage.set(TOKEN_KEY, token), storage.set(USER_KEY, JSON.stringify(loggedUser))]);
     setUser(loggedUser);
   };
 
+  const signIn = async (email: string, password: string) => {
+    const { token, user: loggedUser } = await authApi.login(email.trim(), password);
+    await startSession(token, loggedUser);
+  };
+
+  // Cria a conta e já entra no app com ela.
+  const signUp = async (input: SignUpInput) => {
+    const { token, user: newUser } = await authApi.register(input);
+    await startSession(token, newUser);
+  };
+
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, isTeacher: user?.role === 'teacher', signIn, signOut }}>
+      value={{ user, isLoading, isTeacher: user?.role === 'teacher', signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );
