@@ -17,10 +17,13 @@ import { initials } from '@/utils/format';
 const PAGE_SIZE = 8;
 
 // Listagem paginada de professores ou alunos, com editar e excluir em cada linha.
+// Alunos: qualquer professor gerencia. Professores: só o administrador gerencia os
+// outros; um professor comum vê a lista e edita apenas a própria conta.
 export function PeopleList({ kind }: { kind: PeopleKind }) {
   const config = PeopleConfig[kind];
   const api = peopleApi(kind);
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const canManage = kind === 'students' || isAdmin;
 
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState('');
@@ -75,17 +78,19 @@ export function PeopleList({ kind }: { kind: PeopleKind }) {
 
   const header = (
     <View style={styles.header}>
-      <SearchBar value={query} onChangeText={search}placeholder={`Buscar ${config.plural.toLowerCase()} por nome ou e-mail`} />
+      <SearchBar value={query} onChangeText={search} placeholder={`Buscar ${config.plural.toLowerCase()} por nome ou e-mail`} />
       <View style={styles.headerRow}>
         <Text style={styles.count}>
           {data ? `${data.total} ${data.total === 1 ? config.singular : config.plural.toLowerCase()}` : ''}
         </Text>
-        <Button
-          label={config.newTitle}
-          icon="add"
-          compact
-          onPress={() => router.push({ pathname: '/people/[kind]/new', params: { kind } })}
-        />
+        {canManage ? (
+          <Button
+            label={config.newTitle}
+            icon="add"
+            compact
+            onPress={() => router.push({ pathname: '/people/[kind]/new', params: { kind } })}
+          />
+        ) : null}
       </View>
     </View>
   );
@@ -121,23 +126,26 @@ export function PeopleList({ kind }: { kind: PeopleKind }) {
                 {item.name}
                 {isMe ? <Text style={styles.me}>  (você)</Text> : null}
               </Text>
+              {item.isAdmin ? <Text style={styles.adminTag}>Administrador</Text> : null}
               <Text style={styles.email} numberOfLines={1}>
                 {item.email}
               </Text>
               {extra ? <Text style={styles.extra}>{`${config.extraLabel}: ${extra}`}</Text> : null}
             </View>
-            <View style={styles.actions}>
-              <Button
-                label="Editar"
-                icon="create-outline"
-                variant="secondary"
-                compact
-                onPress={() => router.push({ pathname: '/people/[kind]/[id]', params: { kind, id: item._id } })}
-              />
-              {!isMe ? (
-                <Button label="Excluir" icon="trash-outline" variant="danger" compact onPress={() => remove(item)} />
-              ) : null}
-            </View>
+            {canManage || isMe ? (
+              <View style={styles.actions}>
+                <Button
+                  label="Editar"
+                  icon="create-outline"
+                  variant="secondary"
+                  compact
+                  onPress={() => router.push({ pathname: '/people/[kind]/[id]', params: { kind, id: item._id } })}
+                />
+                {canManage && !isMe ? (
+                  <Button label="Excluir" icon="trash-outline" variant="danger" compact onPress={() => remove(item)} />
+                ) : null}
+              </View>
+            ) : null}
           </View>
         );
       }}
@@ -231,6 +239,17 @@ const styles = StyleSheet.create({
   me: {
     fontWeight: '400',
     color: Colors.muted,
+  },
+  adminTag: {
+    alignSelf: 'flex-start',
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.deep,
+    backgroundColor: Colors.sage,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 1,
+    borderRadius: Radius.pill,
+    overflow: 'hidden',
   },
   email: {
     fontSize: 14,

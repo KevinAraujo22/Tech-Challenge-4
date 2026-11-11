@@ -14,7 +14,7 @@ afterAll(disconnect);
 
 beforeEach(async () => {
   await clearDb();
-  teacherId = (await createTeacher('admin@escola.edu.br', 'Admin')).id;
+  teacherId = (await createTeacher('admin@escola.edu.br', 'Admin', true)).id;
   await createStudent('aluno@escola.edu.br');
   teacher = await loginAs('admin@escola.edu.br');
   student = await loginAs('aluno@escola.edu.br');
@@ -94,4 +94,64 @@ describe.each([
 it('professor não pode excluir a própria conta', async () => {
   const res = await request(app).delete(`/teachers/${teacherId}`).set(teacher);
   expect(res.status).toBe(400);
+});
+
+describe('Professor comum x administrador', () => {
+  let common: Record<string, string> = {};
+  let commonId = '';
+
+  beforeEach(async () => {
+    commonId = (await createTeacher('comum@escola.edu.br', 'Prof. Comum')).id;
+    common = await loadToken('comum@escola.edu.br');
+  });
+
+  const loadToken = (email: string) => loginAs(email);
+  const newTeacher = { name: 'Outro', email: 'outro@escola.edu.br', password: PASSWORD };
+
+  it('professor comum vê a lista de professores', async () => {
+    const res = await request(app).get('/teachers').set(common);
+    expect(res.status).toBe(200);
+    expect(res.body.total).toBe(2);
+  });
+
+  it('professor comum não cria, não edita outro e não exclui professores', async () => {
+    expect((await request(app).post('/teachers').set(common).send(newTeacher)).status).toBe(403);
+    expect((await request(app).put(`/teachers/${teacherId}`).set(common).send({ name: 'Hack' })).status).toBe(403);
+    expect((await request(app).delete(`/teachers/${teacherId}`).set(common)).status).toBe(403);
+    const admin = await Professor.findById(teacherId);
+    expect(admin!.name).toBe('Admin');
+  });
+
+  it('professor comum edita a própria conta, mas não se torna administrador', async () => {
+    const own = await request(app).put(`/teachers/${commonId}`).set(common).send({ subject: 'Física' });
+    expect(own.status).toBe(200);
+    expect(own.body.subject).toBe('Física');
+
+    const promote = await request(app).put(`/teachers/${commonId}`).set(common).send({ isAdmin: true });
+    expect(promote.status).toBe(403);
+  });
+
+  it('professor comum continua gerenciando alunos', async () => {
+    const res = await request(app)
+      .post('/students')
+      .set(common)
+      .send({ name: 'Aluno Novo', email: 'aluno.novo@escola.edu.br', password: PASSWORD });
+    expect(res.status).toBe(201);
+  });
+
+  it('administrador promove um professor e a permissão vale na hora', async () => {
+    const promote = await request(app).put(`/teachers/${commonId}`).set(teacher).send({ isAdmin: true });
+    expect(promote.status).toBe(200);
+    expect(promote.body.isAdmin).toBe(true);
+
+    // Mesmo token de antes: a API consulta o banco, não o token.
+    expect((await request(app).post('/teachers').set(common).send(newTeacher)).status).toBe(201);
+    const me = await request(app).get('/auth/me').set(common);
+    expect(me.body.user.isAdmin).toBe(true);
+  });
+
+  it('administrador não altera o próprio perfil de administrador', async () => {
+    const res = await request(app).put(`/teachers/${teacherId}`).set(teacher).send({ isAdmin: false });
+    expect(res.status).toBe(400);
+  });
 });

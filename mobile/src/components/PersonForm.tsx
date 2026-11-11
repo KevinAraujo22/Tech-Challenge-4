@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { ErrorBanner } from '@/components/Feedback';
 import { FormScreen } from '@/components/FormScreen';
 import { TextField } from '@/components/TextField';
 import { PeopleConfig } from '@/constants/people';
+import { Colors, Radius, Spacing } from '@/constants/theme';
 import type { PeopleKind, PersonInput } from '@/types';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -14,12 +16,13 @@ type PersonFormProps = {
   kind: PeopleKind;
   initial: PersonInput;
   isEdit?: boolean; // na edição a senha é opcional
+  showAdminToggle?: boolean; // só o administrador vê a opção de tornar alguém administrador
   submitLabel: string;
   onSubmit: (person: PersonInput) => Promise<void>;
 };
 
 // Formulário de cadastro/edição de professores e alunos.
-export function PersonForm({ kind, initial, isEdit, submitLabel, onSubmit }: PersonFormProps) {
+export function PersonForm({ kind, initial, isEdit, showAdminToggle, submitLabel, onSubmit }: PersonFormProps) {
   const config = PeopleConfig[kind];
   const [values, setValues] = useState<PersonInput>({ password: '', ...initial });
   const [errors, setErrors] = useState<Partial<Record<keyof PersonInput, string>>>({});
@@ -47,6 +50,7 @@ export function PersonForm({ kind, initial, isEdit, submitLabel, onSubmit }: Per
         email: values.email.trim().toLowerCase(),
         [config.extraField]: (values[config.extraField] ?? '').trim(),
         ...(password ? { password } : {}),
+        ...(showAdminToggle ? { isAdmin: values.isAdmin === true } : {}),
       });
     } catch (err) {
       setServerError((err as Error).message);
@@ -92,7 +96,48 @@ export function PersonForm({ kind, initial, isEdit, submitLabel, onSubmit }: Per
         autoCapitalize="none"
         error={errors.password}
       />
+      {showAdminToggle ? (
+        <View style={styles.adminRow}>
+          <View style={styles.adminText}>
+            <Text style={styles.adminLabel}>Administrador</Text>
+            <Text style={styles.adminHint}>Pode cadastrar, editar e excluir outros professores.</Text>
+          </View>
+          <Switch
+            accessibilityLabel="Administrador"
+            value={values.isAdmin === true}
+            onValueChange={(isAdmin) => setValues((v) => ({ ...v, isAdmin }))}
+            trackColor={{ true: Colors.deep, false: Colors.line }}
+            thumbColor={Colors.white}
+          />
+        </View>
+      ) : null}
       <Button label={submitLabel} icon="checkmark" onPress={submit} loading={saving} />
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  adminRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    padding: Spacing.lg,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.line,
+    backgroundColor: Colors.white,
+  },
+  adminText: {
+    flex: 1,
+    gap: 2,
+  },
+  adminLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.ink,
+  },
+  adminHint: {
+    fontSize: 13,
+    color: Colors.muted,
+  },
+});

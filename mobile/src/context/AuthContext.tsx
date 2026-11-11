@@ -11,6 +11,7 @@ type AuthContextValue = {
   user: User | null;
   isLoading: boolean; // true enquanto a sessão salva é restaurada
   isTeacher: boolean;
+  isAdmin: boolean; // professor administrador: gerencia outros professores
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (input: SignUpInput) => Promise<void>;
   signOut: () => Promise<void>;
@@ -70,7 +71,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, isTeacher: user?.role === 'teacher', signIn, signUp, signOut }}>
+      value={{
+        user,
+        isLoading,
+        isTeacher: user?.role === 'teacher',
+        isAdmin: user?.role === 'teacher' && user.isAdmin === true,
+        signIn,
+        signUp,
+        signOut,
+      }}>
       {children}
     </AuthContext.Provider>
   );

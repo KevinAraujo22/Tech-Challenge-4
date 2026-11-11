@@ -4,7 +4,7 @@ dotenv.config();
 
 import app from './app';
 import { connectDb } from './db';
-import { ensureDefaultTeacher, seedDemoData } from './seed';
+import { ensureAdmin, ensureDefaultTeacher, seedDemoData } from './seed';
 
 const PORT = process.env.PORT || 3000;
 
@@ -13,6 +13,7 @@ connectDb()
     console.log('Conectado ao MongoDB');
     if (process.env.SEED_DEMO_DATA === 'true') await seedDemoData();
     else await ensureDefaultTeacher();
+    await ensureAdmin();
     app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
   })
   .catch((err) => {

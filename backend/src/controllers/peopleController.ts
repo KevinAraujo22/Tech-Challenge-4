@@ -27,6 +27,8 @@ type PeopleOptions = {
   extraField: 'subject' | 'className';
   // Impede que um professor exclua a própria conta (evita ficar sem acesso).
   blockSelfDelete?: boolean;
+  // Professores têm o campo isAdmin, que só o administrador pode alterar.
+  adminField?: boolean;
 };
 
 // Professores e alunos têm o mesmo CRUD (com listagem paginada); só muda o
@@ -77,6 +79,7 @@ export function makePeopleController(PersonModel: Model<any>, options: PeopleOpt
       email: normalized,
       passwordHash: await bcrypt.hash(String(password), 10),
       [extraField]: req.body[extraField] ? String(req.body[extraField]).trim() : undefined,
+      ...(options.adminField && req.isAdmin ? { isAdmin: req.body.isAdmin === true } : {}),
     });
     res.status(201).json(person);
   };
@@ -105,6 +108,13 @@ export function makePeopleController(PersonModel: Model<any>, options: PeopleOpt
       person.passwordHash = await bcrypt.hash(String(password), 10);
     }
     if (req.body?.[extraField] !== undefined) person[extraField] = String(req.body[extraField]).trim();
+    if (options.adminField && req.body?.isAdmin !== undefined) {
+      if (!req.isAdmin)
+        return res.status(403).json({ message: 'Apenas o administrador pode alterar esse perfil' });
+      if (person.id === req.user?.id)
+        return res.status(400).json({ message: 'Você não pode alterar o seu próprio perfil de administrador' });
+      person.isAdmin = req.body.isAdmin === true;
+    }
 
     await person.save();
     res.json(person);
@@ -127,6 +137,7 @@ export const teachersController = makePeopleController(Professor, {
   label: 'Professor',
   extraField: 'subject',
   blockSelfDelete: true,
+  adminField: true,
 });
 
 export const studentsController = makePeopleController(Student, {

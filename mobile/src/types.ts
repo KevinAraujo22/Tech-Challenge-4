@@ -5,6 +5,7 @@ export type User = {
   name: string;
   email: string;
   role: Role;
+  isAdmin?: boolean; // professor administrador
 };
 
 export type Post = {
@@ -34,6 +35,7 @@ export type Person = {
   email: string;
   subject?: string; // professores
   className?: string; // alunos
+  isAdmin?: boolean; // professores
   createdAt?: string;
 };
 
@@ -43,6 +45,7 @@ export type PersonInput = {
   password?: string;
   subject?: string;
   className?: string;
+  isAdmin?: boolean;
 };
 
 export type Page<T> = {

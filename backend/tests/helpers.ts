@@ -30,8 +30,8 @@ export async function disconnect() {
   await mongoose.connection.close();
 }
 
-export async function createTeacher(email = 'prof@escola.edu.br', name = 'Prof. Silva') {
-  return Professor.create({ name, email, passwordHash: await bcrypt.hash(PASSWORD, 10) });
+export async function createTeacher(email = 'prof@escola.edu.br', name = 'Prof. Silva', isAdmin = false) {
+  return Professor.create({ name, email, isAdmin, passwordHash: await bcrypt.hash(PASSWORD, 10) });
 }
 
 export async function createStudent(email = 'aluno@escola.edu.br', name = 'Ana Aluna') {

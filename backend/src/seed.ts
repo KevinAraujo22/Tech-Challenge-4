@@ -16,8 +16,20 @@ export async function ensureDefaultTeacher() {
     email,
     passwordHash: await bcrypt.hash(password, 10),
     subject: 'Coordenação',
+    isAdmin: true,
   });
   console.log(`Professor padrão criado: ${email}`);
+}
+
+// Garante que exista um administrador. Em bancos criados antes desse perfil,
+// o professor mais antigo (o professor padrão) é promovido.
+export async function ensureAdmin() {
+  if (await Professor.exists({ isAdmin: true })) return;
+  const oldest = await Professor.findOne().sort({ createdAt: 1 });
+  if (!oldest) return;
+  oldest.isAdmin = true;
+  await oldest.save();
+  console.log(`Professor administrador: ${oldest.email}`);
 }
 
 // Dados de demonstração (aluno + posts), usados pelo `npm run seed`.

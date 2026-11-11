@@ -8,16 +8,28 @@ import { confirmAction } from '@/utils/confirm';
 import { initials } from '@/utils/format';
 
 export default function AccountScreen() {
-  const { user, isTeacher, signOut } = useAuth();
+  const { user, isTeacher, isAdmin, signOut } = useAuth();
   if (!user) return null;
 
   const logout = async () => {
     if (await confirmAction('Sair', 'Deseja encerrar a sessão neste aparelho?', 'Sair')) await signOut();
   };
 
-  const permissions = isTeacher
-    ? ['Ler e comentar posts', 'Criar, editar e excluir postagens', 'Cadastrar, editar e excluir professores e alunos']
-    : ['Ler posts', 'Comentar nos posts'];
+  const permissions = isAdmin
+    ? [
+        'Ler e comentar posts',
+        'Criar, editar e excluir postagens',
+        'Cadastrar, editar e excluir alunos',
+        'Cadastrar, editar e excluir professores',
+      ]
+    : isTeacher
+      ? [
+          'Ler e comentar posts',
+          'Criar, editar e excluir postagens',
+          'Cadastrar, editar e excluir alunos',
+          'Ver professores e editar a própria conta',
+        ]
+      : ['Ler posts', 'Comentar nos posts'];
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -29,7 +41,7 @@ export default function AccountScreen() {
         <Text style={styles.email}>{user.email}</Text>
         <View style={[styles.badge, isTeacher ? styles.teacherBadge : styles.studentBadge]}>
           <Ionicons name={isTeacher ? 'school' : 'person'} size={14} color={Colors.deep} />
-          <Text style={styles.badgeText}>{isTeacher ? 'Professor(a)' : 'Aluno(a)'}</Text>
+          <Text style={styles.badgeText}>{isAdmin ? 'Professor(a) administrador(a)' : isTeacher ? 'Professor(a)' : 'Aluno(a)'}</Text>
         </View>
       </View>
 

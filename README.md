@@ -156,9 +156,9 @@ Tela do app (React Native / Expo Router)
 | Criação de postagem (3)                | `/posts/new`           | Professor | `POST /posts`                                 |
 | Edição de postagem (4)                 | `/posts/edit/:id`      | Professor | `GET /posts/:id`, `PUT /posts/:id`            |
 | Página administrativa (9)              | `/admin` (aba Admin)   | Professor | `GET /posts`, `DELETE /posts/:id`             |
-| Listagem de professores (7)            | `/teachers`            | Professor | `GET /teachers?page=`, `DELETE /teachers/:id` |
-| Cadastro de professor (5)              | `/people/teachers/new` | Professor | `POST /teachers`                              |
-| Edição de professor (6)                | `/people/teachers/:id` | Professor | `GET /teachers/:id`, `PUT /teachers/:id`      |
+| Listagem de professores (7)            | `/teachers`            | Professor | `GET /teachers?page=`, `DELETE /teachers/:id` (admin) |
+| Cadastro de professor (5)              | `/people/teachers/new` | Admin     | `POST /teachers`                              |
+| Edição de professor (6)                | `/people/teachers/:id` | Admin ou a própria conta | `GET /teachers/:id`, `PUT /teachers/:id` |
 | Listagem / cadastro / edição de alunos (8) | `/students`, `/people/students/...` | Professor | `/students` (mesmo contrato) |
 | Minha conta                            | `/account`             | Logado    | —                                             |
 
@@ -180,9 +180,9 @@ Tela do app (React Native / Expo Router)
 | `DELETE` | `/posts/:id/comments/:commentId`   | Autor ou professor  | Remove um comentário                               |
 | `GET`    | `/teachers?page=&limit=&q=`        | Professor           | Lista paginada: `{ items, page, limit, total, totalPages }` |
 | `GET`    | `/teachers/:id`                    | Professor           | Retorna um professor                               |
-| `POST`   | `/teachers`                        | Professor           | Cadastra (`name`, `email`, `password`, `subject`)  |
-| `PUT`    | `/teachers/:id`                    | Professor           | Atualiza (senha opcional)                          |
-| `DELETE` | `/teachers/:id`                    | Professor           | Remove (não permite excluir a própria conta)       |
+| `POST`   | `/teachers`                        | Admin               | Cadastra (`name`, `email`, `password`, `subject`, `isAdmin`) |
+| `PUT`    | `/teachers/:id`                    | Admin ou a própria conta | Atualiza (senha opcional; só o admin altera `isAdmin` de outro professor) |
+| `DELETE` | `/teachers/:id`                    | Admin               | Remove (não permite excluir a própria conta)       |
 | `GET/POST/PUT/DELETE` | `/students...`        | Professor           | Mesmo contrato, com `className` (turma) no lugar de `subject` |
 
 ---
@@ -198,8 +198,14 @@ Tela do app (React Native / Expo Router)
   definido na variável `TEACHER_SIGNUP_CODE` da API (`403` se o código estiver errado; sem a
   variável, o cadastro de professores pela tela fica desativado). Assim um aluno não consegue se
   "promover" a professor. Após o cadastro o usuário já entra logado.
-- **Cadastro pelos professores:** professores cadastram professores e alunos nas páginas
-  administrativas (`POST /teachers`, `POST /students`).
+- **Cadastro pelos professores:** qualquer professor cadastra, edita e exclui alunos
+  (`/students`). Já os professores são gerenciados pelo **professor administrador**: só ele
+  cria, edita e exclui outros professores e pode tornar outro professor administrador. Um
+  professor comum vê a lista de professores e edita apenas a própria conta.
+- **Professor administrador:** campo `isAdmin` no professor. O professor padrão criado na
+  subida já é administrador; em bancos antigos, o professor mais antigo é promovido
+  automaticamente. A API confere esse campo **no banco** a cada requisição (`requireAdmin` e
+  `requireAdminOrSelf`), então promover ou rebaixar alguém vale na hora, sem depender do token.
 - **Regras comuns:** senhas com no mínimo 6 caracteres, gravadas apenas como hash; o e-mail é
   único entre professores **e** alunos (`409` se repetido).
 - **Primeiro acesso:** se o banco não tiver nenhum professor, a API cria um professor padrão ao
@@ -212,8 +218,9 @@ Tela do app (React Native / Expo Router)
   Sem sessão, só a tela de login existe; para alunos, as abas Admin, Professores e Alunos e as
   telas de criação/edição não existem. Abrir uma dessas rotas redireciona para a página principal.
 - **Proteção na API:** `requireAuth` bloqueia quem não está logado (`401`) e `requireTeacher`
-  bloqueia alunos (`403`) em `POST/PUT/DELETE /posts` e em todo `/teachers` e `/students`. A
-  proteção não depende apenas da interface.
+  bloqueia alunos (`403`) em `POST/PUT/DELETE /posts` e em todo `/teachers` e `/students`.
+  `requireAdmin` bloqueia professores comuns (`403`) ao criar, editar outro ou excluir
+  professores. A proteção não depende apenas da interface.
 
 ---
 
@@ -334,11 +341,14 @@ o IP do computador que roda a API ou para uma API hospedada). O app libera HTTP 
    **Nova postagem** abre o formulário, com o autor já preenchido.
 3. **Admin:** lista de todas as postagens com **Editar** (formulário com os dados atuais) e
    **Excluir** (pede confirmação e apaga também os comentários).
-4. **Professores / Alunos:** listagem paginada com busca por nome ou e-mail. Cada linha tem
-   **Editar** e **Excluir**; **Novo professor / Novo aluno** abre o cadastro. Na edição, deixe a
-   senha em branco para manter a atual.
-5. Na leitura de um post é possível comentar e excluir qualquer comentário.
-6. **Conta:** perfil, permissões e **Sair**.
+4. **Alunos:** listagem paginada com busca por nome ou e-mail. Cada linha tem **Editar** e
+   **Excluir**; **Novo aluno** abre o cadastro. Na edição, deixe a senha em branco para manter a
+   atual.
+5. **Professores:** mesma listagem. O **administrador** (etiqueta "Administrador") vê
+   **Novo professor**, **Editar** e **Excluir** em todos e, na edição, pode marcar outro professor
+   como administrador. Um professor comum vê a lista e só tem **Editar** na própria conta.
+6. Na leitura de um post é possível comentar e excluir qualquer comentário.
+7. **Conta:** perfil, permissões e **Sair**.
 
 **Aluno**
 
@@ -368,7 +378,7 @@ cd backend
 npm test          # Jest + Supertest (requer MongoDB em localhost:27017)
 ```
 
-Cenários cobertos no backend (49 testes):
+Cenários cobertos no backend (55 testes):
 
 | Cenário                                                      | Resultado esperado |
 |-------------------------------------------------------------|--------------------|
@@ -390,6 +400,9 @@ Cenários cobertos no backend (49 testes):
 | Editar mantendo a senha / excluir                            | 200 / 204          |
 | Acessar `/teachers` ou `/students` como aluno / sem login    | 403 / 401          |
 | Professor excluindo a própria conta                          | 400                |
+| Professor comum criando, editando outro ou excluindo professor | 403              |
+| Professor comum editando a própria conta / se promovendo     | 200 / 403          |
+| Admin promove professor (vale sem trocar o token)            | 200                |
 
 ---
 
@@ -403,6 +416,11 @@ Cenários cobertos no backend (49 testes):
   professores com o código de acesso da escola (`TEACHER_SIGNUP_CODE`). Para o banco vazio, a API
   cria um professor padrão na subida (configurável por variáveis de ambiente), e o script
   `npm run seed` gera dados de demonstração.
+- **Professor editando a conta de outros professores:** nos testes com o app percebemos que
+  qualquer professor podia editar ou excluir outro professor, inclusive pela API. Criamos o
+  perfil de professor administrador e as regras `requireAdmin`/`requireAdminOrSelf`, que
+  consultam o banco a cada requisição. No app, os botões aparecem conforme o perfil, mas a
+  proteção real é a da API.
 - **E-mail único em duas coleções:** professores e alunos ficam em coleções diferentes, mas o
   e-mail é o login dos dois. O índice `unique` do MongoDB não cobre isso, então a função
   `emailInUse` consulta as duas coleções antes de criar ou editar.

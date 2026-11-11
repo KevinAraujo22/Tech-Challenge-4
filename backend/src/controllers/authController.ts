@@ -26,6 +26,7 @@ export const login = async (req: Request, res: Response) => {
     email: account.email,
     name: account.name,
     role: professor ? 'teacher' : 'student',
+    ...(professor ? { isAdmin: professor.isAdmin } : {}),
   };
   res.json({ token: signToken(user), user });
 };
@@ -64,10 +65,28 @@ export const register = async (req: Request, res: Response) => {
     passwordHash: await bcrypt.hash(String(password), 10),
   });
 
-  const user: AuthUser = { id: account.id, email: account.email, name: account.name, role: role as Role };
+  const user: AuthUser = {
+    id: account.id,
+    email: account.email,
+    name: account.name,
+    role: role as Role,
+    ...(role === 'teacher' ? { isAdmin: false } : {}),
+  };
   res.status(201).json({ token: signToken(user), user });
 };
 
+// Dados atualizados do banco (nome, e-mail e se é administrador podem ter mudado).
 export const me = async (req: AuthRequest, res: Response) => {
-  res.json({ user: req.user });
+  const professor = req.user?.role === 'teacher' ? await Professor.findById(req.user.id) : null;
+  const account = professor ?? (await Student.findById(req.user?.id));
+  if (!account) return res.status(401).json({ message: 'Conta não encontrada' });
+
+  const user: AuthUser = {
+    id: account.id,
+    email: account.email,
+    name: account.name,
+    role: professor ? 'teacher' : 'student',
+    ...(professor ? { isAdmin: professor.isAdmin } : {}),
+  };
+  res.json({ user });
 };

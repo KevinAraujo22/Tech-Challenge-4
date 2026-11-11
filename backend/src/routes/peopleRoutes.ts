@@ -1,9 +1,11 @@
 import { Router } from 'express';
 import { makePeopleController, teachersController, studentsController } from '../controllers/peopleController';
-import { requireTeacher } from '../middleware/auth';
+import { requireAdmin, requireAdminOrSelf, requireTeacher } from '../middleware/auth';
 
-// Todas as rotas administrativas de pessoas exigem um professor autenticado.
-function peopleRouter(controller: ReturnType<typeof makePeopleController>) {
+type Controller = ReturnType<typeof makePeopleController>;
+
+// Alunos: qualquer professor autenticado gerencia.
+function studentRouter(controller: Controller) {
   const router = Router();
   router.use(requireTeacher);
   router.get('/', controller.list);
@@ -14,5 +16,18 @@ function peopleRouter(controller: ReturnType<typeof makePeopleController>) {
   return router;
 }
 
-export const teacherRoutes = peopleRouter(teachersController);
-export const studentRoutes = peopleRouter(studentsController);
+// Professores: todos os professores veem a lista, mas só o administrador cria,
+// edita e exclui outros professores. Cada professor pode editar a própria conta.
+function teacherRouter(controller: Controller) {
+  const router = Router();
+  router.use(requireTeacher);
+  router.get('/', controller.list);
+  router.get('/:id', controller.get);
+  router.post('/', requireAdmin, controller.create);
+  router.put('/:id', requireAdminOrSelf, controller.update);
+  router.delete('/:id', requireAdmin, controller.remove);
+  return router;
+}
+
+export const teacherRoutes = teacherRouter(teachersController);
+export const studentRoutes = studentRouter(studentsController);
